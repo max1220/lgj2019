@@ -13,6 +13,21 @@ local config = require("config")
 config.output.type = "fb=/dev/fb0"
 config.output.scale = 5
 
+
+-- add uinput input devices
+config.input = {
+	{
+		type = "keyboard",
+		driver = "uinput",
+		dev = "/dev/input/event0",
+	},
+	{
+		type = "keyboard",
+		driver = "uinput",
+		dev = "/dev/input/event1",
+	}
+}
+
 -- load the entry point from the config
 local entry = require("menu")
 local inst = engine.new(entry, config)

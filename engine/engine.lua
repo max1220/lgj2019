@@ -20,7 +20,7 @@ function Engine.new(stage, config)
 	-- called when an input is received from a uinput keyboard
 	local key_state = {}
 	local input_callbacks = {}
-	local function handle_uinput_keyboard_ev(ev, config)
+	local function handle_uinput_keyboard_ev(ev)
 		if ev.type == input.event_codes.EV_KEY then
 			if input_callbacks[ev.code] then
 				input_callbacks[ev.code](ev)
@@ -30,6 +30,32 @@ function Engine.new(stage, config)
 			else
 				key_state[ev.code] = nil
 			end
+		end
+	end
+	
+	
+	local sdl_to_uinput = {
+		-- TODO
+		["Left"] = input.event_codes.KEY_LEFT,
+		["Right"] = input.event_codes.KEY_RIGHT,
+		["Up"] = input.event_codes.KEY_UP,
+		["Down"] = input.event_codes.KEY_DOWN,
+		["Space"] = input.event_codes.KEY_SPACE,
+		["Return"] = input.event_codes.KEY_ENTER
+	}
+	local function handle_sdl_event(ev)
+		if ev.type == "keyup" then
+			handle_uinput_keyboard_ev({
+				type = input.event_codes.EV_KEY,
+				code = sdl_to_uinput[ev.key],
+				value = 0
+			})
+		elseif ev.type == "keydown" then
+			handle_uinput_keyboard_ev({
+				type = input.event_codes.EV_KEY,
+				code = sdl_to_uinput[ev.key],
+				value = 1
+			})
 		end
 	end
 	
@@ -532,6 +558,8 @@ function Engine.new(stage, config)
 			local ev = sdl_window:pool_event()
 			if ev and ev.type == "quit" then
 				self.run = false
+			elseif ev then
+				handle_sdl_event(ev)
 			end
 		end
 	end
@@ -561,15 +589,15 @@ function Engine.new(stage, config)
 			local dt = time.realtime() - last_update
 			last_update = time.realtime()
 			
-			local remaining_time_ms = (self.config.output.target_dt - dt)*1000
+			local remaining_time = self.config.output.target_dt - dt
+			if remaining_time > (3/1000) then
+				time.sleep(remaining_time-(2/1000))
+			end
 			
 			self:update(dt)
 			
-			-- we can do an extra input/draw if we have spare time
-			if remaining_time_ms > 10 then
-				self:_input()
-				self:draw(out_db)
-			end
+			self:_input()
+			self:draw(out_db)
 			
 			-- scale drawbuffer if necesarry
 			local scaled = scale_db(out_db)

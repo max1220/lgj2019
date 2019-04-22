@@ -62,13 +62,13 @@ colliders[97] = "goal"
 colliders[108] = "coin"
 colliders[99] = "enemy"
 local animations = {
-	{
+	--[[{
 		dt = 2/3,
 		source = 87,
 		frames = {118},
 		layer = 1,
 		ctime = 0
-	}
+	}]]
 }
 
 
@@ -393,7 +393,6 @@ local function update_player(dt)
 				skip = true
 			elseif col.other.class == "box" then
 				if col.normal.y and col.normal.y == 1 then
-					print("box")
 					player.velocity_y = 0
 					local x = col.other.x/assets.by_name.tileset.tileset.tile_w
 					local y = col.other.y/assets.by_name.tileset.tileset.tile_h
@@ -405,14 +404,12 @@ local function update_player(dt)
 					end
 				end
 			elseif col.other.class == "live" then
-				print("live")
 				local x = col.other.x/assets.by_name.tileset.tileset.tile_w
 				local y = col.other.y/assets.by_name.tileset.tileset.tile_h
 				player.lives = math.min(player.lives+1, 10)
 				tilemap:replace_tileid_at(x, y, 86, 0, world)
 				skip = true
 			elseif col.other.class == "coin" then
-				print("coin")
 				local x = col.other.x/assets.by_name.tileset.tileset.tile_w
 				local y = col.other.y/assets.by_name.tileset.tileset.tile_h
 				player.coins = player.coins+1
@@ -423,15 +420,12 @@ local function update_player(dt)
 				tilemap:replace_tileid_at(x, y, 108, 0, world)
 				skip = true
 			elseif col.other.class == "bouncer" then
-				print("bouncer")
 				player.velocity_y = -80
 				player.is_on_ground = false
 				skip = true
 			elseif col.other.class == "goal" then
-				print("goal")
 				load_next_level()
 			elseif col.other.class == "enemy" then
-				print("player collided with enemy")
 				player_die()
 			end
 			

@@ -7,21 +7,10 @@ return {
 		width = 160,
 		height = 120,
 		scale = 5, -- required width, height will double
-		target_dt = 1/30, -- if the FPS is higher than this, insert some sleeps to reduce the CPU load
+		target_dt = 1/60, -- if the FPS is higher than this, insert some sleeps to reduce the CPU load
 		always_night = false -- Night mode
 	},
-	input = {
-		{
-			type = "keyboard",
-			driver = "uinput",
-			dev = "/dev/input/event0",
-		},
-		{
-			type = "keyboard",
-			driver = "uinput",
-			dev = "/dev/input/event1",
-		}
-	},
+	input = {},
 	fonts = {
 		cga8 = {
 			bmp = "fonts/cga8.bmp",
