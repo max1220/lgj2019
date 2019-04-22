@@ -13,6 +13,6 @@ cp -vu /home/max/stuff/cjson.so .
 
 cp -vu /home/max/stuff/minilinux/buildroot/output/images/bzImage .
 
-tar --exclude-vcs -cf ../lgj2019.tar ../lgj2019
+tar --exclude-vcs --exclude="lgj2019/lgj2019.tar" -cf ../lgj2019.tar ../lgj2019
 
 cp ../lgj2019.tar .
