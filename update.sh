@@ -10,3 +10,5 @@ cp -vu /home/max/stuff/lua-sdl2fb/sdl2fb.so .
 cp -vu /home/max/stuff/lua-time/time.so .
 
 cp -vu /home/max/stuff/cjson.so .
+
+tar --exclude-vcs -cf ../lgj2019.tar ../lgj2019
