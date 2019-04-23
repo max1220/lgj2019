@@ -31,7 +31,9 @@ local night = false
 local stars
 local clouds
 local time_remaining_str
-local enemies = {}
+local enemies
+local turrets
+local spawner
 
 
 
@@ -52,7 +54,7 @@ colliders[73] = "cloud"
 colliders[74] = "cloud"
 colliders[75] = "cloud"
 colliders[69] = "box"
-colliders[81] = "bouncer"
+colliders[81] = "spawner"
 colliders[82] = "bouncer"
 colliders[83] = "cloud"
 colliders[84] = "cloud"
@@ -61,6 +63,7 @@ colliders[89] = "goal"
 colliders[97] = "goal"
 colliders[108] = "coin"
 colliders[99] = "enemy"
+colliders[100] = "turret"
 local animations = {
 	--[[{
 		dt = 2/3,
@@ -115,16 +118,16 @@ end
 
 -- create a bullet from the player, towards x,y
 local bullets = {}
-local function player_shoot(dt, dx,dy)
+local function player_shoot(dx,dy)
 	local bullet = {
 		x = player.x,
-		y = player.y + 15,
+		y = player.y + 16,
 		w = 1,
 		h = 1,
 		dx = dx,
 		dy = dy,
 		speed = 100,
-		gravity = 3
+		gravity = 4
 	}
 	
 	if dx > 0 then
@@ -195,7 +198,11 @@ local function load_next_level()
 	elseif engine.config._clevel == "map2" then
 		engine.config._clevel = "map3"
 		engine:change_stage("game")
+	elseif engine.config._clevel == "map3" then
+		engine.config._clevel = "map4"
+		engine:change_stage("game")
 	else
+		engine.config.output.always_night = true
 		engine.config._clevel = nil
 		engine.config._ccoins = nil
 		engine.config._clives = nil
@@ -294,6 +301,40 @@ local function add_enemy(x,y)
 end
 
 
+local spawner_i
+local function add_spawner(x,y)
+	print("add_spawner(x,y)",x,y)
+	local spawner = {
+		spawnrate = 10,
+		ctime = 0,
+		spawn_x = x + 4,
+		spawn_y = y + 16
+	}
+	
+	table.insert(spawners, spawner)
+end
+
+
+local turret_i = 1
+local function add_turret(x,y)
+	print("add_turret(x,y)",x,y)
+	local turret = {
+		firerate = 3,
+		ctime = 0,
+		spawn_x = x - 3,
+		spawn_y = y +4,
+		dx = -1
+	}
+	
+	-- add delay between different turrets
+	turret.ctime = (turret.ctime + (turret_i/10)) % turret.firerate
+	turret_i = turret_i + 1
+	
+	table.insert(turrets, turret)
+end
+
+
+
 -- update the tile_subst_table with the current animation frames
 local function update_animations(dt)
 	for i, animation in ipairs(animations) do
@@ -340,9 +381,9 @@ local function update_player(dt)
 	if engine:key_is_down(input.event_codes.KEY_SPACE) then
 		if player.can_shoot then
 			if player.dir == "right" then
-				player_shoot(dt, 1, 0)
+				player_shoot(1, 0)
 			elseif player.dir == "left" then
-				player_shoot(dt, -1, 0)
+				player_shoot(-1, 0)
 			end
 		end
 	end
@@ -445,6 +486,40 @@ local function update_player(dt)
 end
 
 
+local function update_spawners(dt)
+	for i, spawner in ipairs(spawners) do
+		spawner.ctime = spawner.ctime + dt
+		if spawner.ctime >= spawner.spawnrate then
+			-- spawn a new enemy
+			add_enemy(spawner.spawn_x, spawner.spawn_y)
+			spawner.ctime = 0
+		end
+	end
+end
+
+local function update_turrets(dt)
+	for i, turret in ipairs(turrets) do
+		turret.ctime = turret.ctime + dt
+		if turret.ctime >= turret.firerate then
+			-- add a bullet
+			local bullet = {
+				x = turret.spawn_x,
+				y = turret.spawn_y,
+				w = 1,
+				h = 1,
+				dx = turret.dx,
+				dy = 0,
+				speed = 100,
+				gravity = 0
+			}
+			world.physics_world:add(bullet, bullet.x, bullet.y, bullet.w, bullet.h)
+			table.insert(bullets, bullet)
+			turret.ctime = 0
+		end
+	end
+end
+
+
 -- update bullet positions, handle collisions
 local function update_bullets(dt)
 	for i, bullet in ipairs(bullets) do
@@ -473,7 +548,7 @@ end
 local function draw_bullets(db)
 	for i, bullet in ipairs(bullets) do
 		local screen_x, screen_y = world_to_screen_coords(bullet.x, bullet.y)
-		local last_x, last_y = world_to_screen_coords(bullet.x - bullet.dx*bullet.speed*0.1, bullet.y - bullet.dy*bullet.speed*0.1)
+		local last_x, last_y = world_to_screen_coords(bullet.x - (bullet.dx*bullet.speed)*0.05, bullet.y - (bullet.dy*bullet.speed + bullet.gravity)*0.05)
 		db:set_line(screen_x, screen_y, last_x, last_y, unpack(bullet.trail or {64, 64, 64, 255}))
 		db:set_pixel(screen_x, screen_y,  unpack(bullet.color or {255, 127, 0, 255}))
 	end
@@ -568,7 +643,9 @@ end
 
 
 -- load the tilemap
-local enemy_coords = {}
+local enemy_coords
+local spawner_coords
+local turret_coords
 local function load_tilemap()
 	-- create tilemap_db that contains the rendered tilemap.
 	-- TODO: create 2 tilemap layers, to draw below/above the player
@@ -590,6 +667,12 @@ local function load_tilemap()
 		if colliders[tileid] == "enemy" then
 			table.insert(enemy_coords, {x,y})
 			return "enemy"
+		elseif colliders[tileid] == "spawner" then
+			table.insert(spawner_coords, {x,y})
+			return "spawner"
+		elseif colliders[tileid] == "turret" then
+			table.insert(turret_coords, {x,y})
+			return "turret"
 		end
 		return colliders[tileid] or "none"
 	end)
@@ -606,6 +689,9 @@ end
 -- called when the calculations should be done
 function game:update(dt)
 	fps = 1/dt
+	
+	dt = dt * self.config.speed
+	
 	update_player(dt)
 	scroll_x = math.min(-(player.x) + (width/2), 0)
 	-- scroll_x = math.min((player.x) , 0)
@@ -614,6 +700,8 @@ function game:update(dt)
 	player.runtime = player.runtime + dt
 	
 	update_bullets(dt)
+	update_spawners(dt)
+	update_turrets(dt)
 	
 	-- redraw tilemap buffer if needed(costly, but needed on tilechange)
 	update_animations(dt)
@@ -674,6 +762,7 @@ function game:draw(db)
 	assets.by_name.tileset.tileset.draw_tile(db, 0,8, 108)
 	
 	font:draw_string(db, time_remaining_str, width-48, 0)
+	font:draw_string(db, (" %3d"):format(fps), width-32, 9)
 end
 
 
@@ -687,6 +776,16 @@ function game:init()
 	height = self.config.output.height
 	
 	self.config._clevel = self.config._clevel or "map"
+
+
+	enemies = {}
+	turrets = {}
+	spawners = {}
+	bullets = {}
+	enemy_coords = {}
+	spawner_coords = {}
+	turret_coords = {}
+
 
 	-- load required assets into an asset table
 	assets = self:load_assets({
@@ -787,6 +886,12 @@ function game:init()
 			type = "tiled_map",
 			tileset_name = "tileset",
 			file = "img/test_map_4.json"
+		},
+		{
+			name = "map4",
+			type = "tiled_map",
+			tileset_name = "tileset",
+			file = "img/test_map_5.json"
 		}
 		
 	})
@@ -799,13 +904,19 @@ function game:init()
 	player.lives = self.config._clives or player.lives
 	player.coins = self.config._ccoins or player.coins
 	
-	stars = generate_stars(100, tilemap.tiles_x*tilemap.tileset.tile_w)
+	stars = generate_stars(1000, tilemap.tiles_x*tilemap.tileset.tile_w)
 	clouds = generate_clouds(15, tilemap.tiles_x*tilemap.tileset.tile_w)
 	
-	enemies = {}
+	
 	
 	for i,enemy_coord in ipairs(enemy_coords) do
 		add_enemy(enemy_coord[1]*8, enemy_coord[2]*8)
+	end
+	for i,spawner_coord in ipairs(spawner_coords) do
+		add_spawner(spawner_coord[1]*8, spawner_coord[2]*8)
+	end
+	for i,turret_coord in ipairs(turret_coords) do
+		add_turret(turret_coord[1]*8, turret_coord[2]*8)
 	end
 	
 	tilemap.dirty = true

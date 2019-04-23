@@ -47,13 +47,13 @@ function Engine.new(stage, config)
 		if ev.type == "keyup" then
 			handle_uinput_keyboard_ev({
 				type = input.event_codes.EV_KEY,
-				code = sdl_to_uinput[ev.key],
+				code = sdl_to_uinput[ev.key] or 0,
 				value = 0
 			})
 		elseif ev.type == "keydown" then
 			handle_uinput_keyboard_ev({
 				type = input.event_codes.EV_KEY,
-				code = sdl_to_uinput[ev.key],
+				code = sdl_to_uinput[ev.key] or 0,
 				value = 1
 			})
 		end
@@ -585,26 +585,28 @@ function Engine.new(stage, config)
 	function stage:_loop()
 		local last_update = time.realtime()
 		while self.run do
-			-- get delta time, call update callback
-			local dt = time.realtime() - last_update
+			-- get delta time, sleep if dt > target_dt
+			local loop_start = time.realtime()
+			local dt = loop_start - last_update
+			local remaining_time = self.config.output.target_dt - dt
+			if (remaining_time) > (1/1000) then
+				time.sleep(remaining_time)
+				dt = (time.realtime() - loop_start) + (loop_start - last_update)
+			end
 			last_update = time.realtime()
 			
-			local remaining_time = self.config.output.target_dt - dt
-			if remaining_time > (3/1000) then
-				time.sleep(remaining_time-(2/1000))
-			end
-			
+			-- call stage update callback
 			self:update(dt)
 			
+			-- handle input & draw output
 			self:_input()
 			self:draw(out_db)
 			
-			-- scale drawbuffer if necesarry
+			-- scale drawbuffer if necesarry(Does not scale if not needed)
 			local scaled = scale_db(out_db)
 			
-			-- output updated buffer
+			-- output updated buffer(output function selected based on config)
 			output(scaled)
-			
 			
 		end
 	end
