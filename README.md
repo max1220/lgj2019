@@ -10,6 +10,8 @@ installed, and run:
 
 	./launch_sdl.sh
 
+You might also need to install liblua5.1-0, depending on your distribution.
+
 You should see a SDL2 window open, with the game ready to play!
 
 For the more advanced output modes, you might need extra permissions(for opening
